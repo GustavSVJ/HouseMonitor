@@ -1,10 +1,8 @@
 const byte ledPin = 0;
 const byte interruptPin = 4;
 volatile byte state = LOW;
-unsigned long newTime = 0;
 unsigned long lastBlinkTime = 0;
-unsigned long SetNewTime = 0;
-unsigned long compareTime = 100l;
+unsigned static int compareTime = 100;
 
 void setup() {
   pinMode(ledPin, OUTPUT);
@@ -18,18 +16,10 @@ void loop() {
 }
 
 void blink() {
-  detachInterrupt(digitalPinToInterrupt(interruptPin));
-  newTime = millis();
-  if ((newTime - lastBlinkTime) < compareTime) {
-    //It is the same blink
-  }
-  else {
-    lastBlinkTime = newTime;
+  if (millis() > lastBlinkTime + compareTime) {
+    lastBlinkTime = millis();
     state = !state;
-    delay(200);
-    Serial.println("blink ");
-    Serial.println(newTime);
+    Serial.println("Blink");
   }
-  attachInterrupt(digitalPinToInterrupt(interruptPin), blink, FALLING);
 }
 
