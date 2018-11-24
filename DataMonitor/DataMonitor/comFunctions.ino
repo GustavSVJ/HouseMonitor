@@ -31,7 +31,17 @@ void MQTTConnect(){
   delay(1000);
   
   if (!client.connected()) {
-    while (!client.connect("ESP8266:Monitor")) {
+
+      StaticJsonBuffer<200> jsonBuffer;
+      JsonObject& payload = jsonBuffer.createObject();
+      payload["deviceID"] = deviceID;
+      payload["data"] = indoorTemperatureValue;
+
+      String payloadBuffer;
+      
+      payload.printTo(payloadBuffer);
+    
+    while (!client.connect(deviceID, "Devices", 0, false, deviceID)) {
       delay(1000);
       display.print(".");
       display.display();
@@ -47,14 +57,10 @@ void MQTTConnect(){
 }
 
 void MQTTCallback(char* topic, byte* payload, unsigned int length){
-  Serial.println("Package received!");
-  Serial.println(length);
-  
-  if (strcmp(topic, "IndoorTemperature") == 0){
+  if (strcmp(topic, "OutdoorTemperature") == 0){
     payload[length] = 0;
     String str = String((char*)payload);
-    Serial.println(str);
-    indoorTemperature = str.toFloat();
+    //indoorTemperatureValue = str.toFloat();
   }
   else if (strcmp(topic, "SomeOtherTopic") == 0){
     //Do something
@@ -76,5 +82,43 @@ void MQTTSubscribe(const char* topic){
     display.print(".");
     display.display();
   }
+}
+
+void DHTConnect(){
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,10);
+  display.println("Connecting to the");
+  display.print("DHT sensor");
+  display.display();
+
+  dht.begin();
+  
+  delay(1000);
+
+  float h = dht.readHumidity();
+  // Read temperature as Celsius (the default)
+  float t = dht.readTemperature();
+
+  if (isnan(h) || isnan(t)) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0,10);
+    display.println("Failed to connect");
+    display.print("to the DHT sensor!");
+    display.display();
+    while(1);
+  }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,10);
+  display.println("Connection to the DHT");
+  display.print("sensor established!");
+  display.display();
+  delay(1000);
 }
 

@@ -5,6 +5,9 @@ const char* password = "Briobane";     // The password of the Wi-Fi network
 
 //MQTT Libraries
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+const char* deviceID = "ESP8266:Monitor";
 
 const char* mqttServer = "192.168.0.10";
 const int   mqttPort = 1883;
@@ -13,6 +16,14 @@ const char* mqttPassword = "";
 
 WiFiClient wifiClient; //Create wifi client object
 PubSubClient client(mqttServer, 1883, wifiClient); //Create a PubSub MQTT Client
+
+//DHT Libraries
+#include "DHT.h"
+
+#define DHTPIN 12     // what digital pin we're connected to
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+
+DHT dht(DHTPIN,DHTTYPE);
 
 //Display Libraries
 #include <SPI.h>
@@ -73,7 +84,8 @@ enum menues {indoorTemp, indoorHumidity,outdoorTemp, power};
 char activeMenu = indoorTemp;
 
 //Data variables
-float indoorTemperature = 0;
+float indoorTemperatureValue = 0;
+float indoorHumidityValue = 0;
 
 
 
@@ -92,7 +104,9 @@ void setup() {
 
   client.setCallback(MQTTCallback);
 
-  MQTTSubscribe("IndoorTemperature");
+  MQTTSubscribe("OutdoorTemperature");
+
+  DHTConnect();
   
   pinMode(14, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(14), displayControl, RISING); 
@@ -110,6 +124,9 @@ void displayControl(){
     }
   }
 }
+
+unsigned long long lastRuntime = 0;
+unsigned long long loopTimer = 0;
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -134,9 +151,9 @@ void loop() {
       display.drawBitmap(0, 9, bitmapHouse, BITMAP_HOUSE_WIDTH, BITMAP_HOUSE_HEIGHT, WHITE);
       display.setTextSize(2);
       display.setCursor(35,15);
-      display.print(indoorTemperature, 1);
+      display.print(indoorTemperatureValue, 1);
       display.print(" C");
-      if (indoorTemperature < 10){
+      if (indoorTemperatureValue < 10){
         display.drawCircle(76,17, 2, WHITE);
       }
       else{
@@ -163,12 +180,57 @@ void loop() {
       display.println("Indoor Humidity");
       display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapRaindrop, BITMAP_RAINDROP_WIDTH, BITMAP_RAINDROP_HEIGHT, WHITE);
+      display.setTextSize(2);
+      display.setCursor(35,15);
+      display.print(indoorHumidityValue, 1);
+      display.print("%");
     break;
     
   }
 
   display.display();
 
+  if ((millis() - lastRuntime) > 5000){
+    lastRuntime = millis();
+    float h = dht.readHumidity();
+    // Read temperature as Celsius (the default)
+    float t = dht.readTemperature();
+
+    if (abs(indoorHumidityValue - h) > 0.1){
+      indoorHumidityValue = h;
+      
+      StaticJsonBuffer<200> jsonBuffer;
+      JsonObject& payload = jsonBuffer.createObject();
+      payload["deviceID"] = deviceID;
+      payload["data"] = indoorHumidityValue;
+
+      String payloadBuffer;
+      
+      payload.printTo(payloadBuffer);
   
+      client.publish("HomeMonitor/IndoorHumidity", payloadBuffer.c_str(), true);
+      
+    }
+    if (abs(indoorTemperatureValue - t) > 0.1){
+      indoorTemperatureValue = t;
+
+      StaticJsonBuffer<200> jsonBuffer;
+      JsonObject& payload = jsonBuffer.createObject();
+      payload["deviceID"] = deviceID;
+      payload["data"] = indoorTemperatureValue;
+
+      String payloadBuffer;
+      
+      payload.printTo(payloadBuffer);
+  
+      client.publish("HomeMonitor/IndoorTemperature", payloadBuffer.c_str(), true);
+      
+    }
+    
+  }
+  
+  unsigned int relativeTime = millis() - loopTimer;
+  Serial.println(relativeTime);
+  loopTimer = millis();
   
 }
