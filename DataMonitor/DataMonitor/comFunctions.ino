@@ -41,7 +41,7 @@ void MQTTConnect(){
       
       payload.printTo(payloadBuffer);
     
-    while (!client.connect(deviceID, "Devices", 0, false, deviceID)) {
+    while (!client.connect(deviceID, "HomeMonitor/Devices", 0, false, deviceID)) {
       delay(1000);
       display.print(".");
       display.display();
@@ -57,13 +57,15 @@ void MQTTConnect(){
 }
 
 void MQTTCallback(char* topic, byte* payload, unsigned int length){
-  if (strcmp(topic, "OutdoorTemperature") == 0){
+  if (strcmp(topic, "HomeMonitor/OutdoorTemperature") == 0){
     payload[length] = 0;
     String str = String((char*)payload);
-    //indoorTemperatureValue = str.toFloat();
+    outdoorTemperatureValue = str.toFloat();
   }
-  else if (strcmp(topic, "SomeOtherTopic") == 0){
-    //Do something
+  else if (strcmp(topic, "HomeMonitor/Power") == 0){
+    payload[length] = 0;
+    String str = String((char*)payload);
+    powerValue = str.toFloat();
   }
 }
 

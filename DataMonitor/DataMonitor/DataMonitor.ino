@@ -86,6 +86,8 @@ char activeMenu = indoorTemp;
 //Data variables
 float indoorTemperatureValue = 0;
 float indoorHumidityValue = 0;
+float outdoorTemperatureValue = 0;
+float powerValue = 0;
 
 
 
@@ -104,7 +106,8 @@ void setup() {
 
   client.setCallback(MQTTCallback);
 
-  MQTTSubscribe("OutdoorTemperature");
+  MQTTSubscribe("HomeMonitor/OutdoorTemperature");
+  MQTTSubscribe("HomeMonitor/Power");
 
   DHTConnect();
   
@@ -166,6 +169,16 @@ void loop() {
       display.println("Outdoor Temperature");
       display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapCloud, BITMAP_CLOUD_WIDTH, BITMAP_CLOUD_HEIGHT, WHITE);
+      display.setTextSize(2);
+      display.setCursor(35,15);
+      display.print(outdoorTemperatureValue, 1);
+      display.print(" C");
+      if (outdoorTemperatureValue < 10){
+        display.drawCircle(76,17, 2, WHITE);
+      }
+      else{
+        display.drawCircle(88,17, 2, WHITE);
+      }    
     break;
     case power:
       display.setTextSize(1);
@@ -173,6 +186,10 @@ void loop() {
       display.println("Power Usage");
       display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapLightning, BITMAP_LIGHTNING_WIDTH, BITMAP_LIGHTNING_HEIGHT, WHITE);
+      display.setTextSize(2);
+      display.setCursor(35,15);
+      display.print(powerValue, 0);
+      display.print("W");
     break;
     case indoorHumidity:
       display.setTextSize(1);
@@ -225,12 +242,6 @@ void loop() {
   
       client.publish("HomeMonitor/IndoorTemperature", payloadBuffer.c_str(), true);
       
-    }
-    
-  }
-  
-  unsigned int relativeTime = millis() - loopTimer;
-  Serial.println(relativeTime);
-  loopTimer = millis();
-  
+    } 
+  }  
 }
