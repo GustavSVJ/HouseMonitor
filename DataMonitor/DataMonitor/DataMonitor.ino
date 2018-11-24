@@ -1,7 +1,18 @@
-#include <ESP8266WiFi.h>        // Include the Wi-Fi library
+#include <ESP8266WiFi.h>        // Include the Wi-Fi library'
 
 const char* ssid     = "VintherNet";         // The SSID (name) of the Wi-Fi network you want to connect to
 const char* password = "Briobane";     // The password of the Wi-Fi network
+
+//MQTT Libraries
+#include <PubSubClient.h>
+
+const char* mqttServer = "192.168.0.10";
+const int   mqttPort = 1883;
+const char* mqttUser = "";
+const char* mqttPassword = "";
+
+WiFiClient wifiClient; //Create wifi client object
+PubSubClient client(mqttServer, 1883, wifiClient); //Create a PubSub MQTT Client
 
 //Display Libraries
 #include <SPI.h>
@@ -61,6 +72,11 @@ volatile unsigned long long interruptTimeStamp = 0;
 enum menues {indoorTemp, indoorHumidity,outdoorTemp, power};
 char activeMenu = indoorTemp;
 
+//Data variables
+float indoorTemperature = 0;
+
+
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -71,24 +87,12 @@ void setup() {
  
   WiFi.begin(ssid, password);             // Connect to the network
   
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,10);
-  display.println("Connecting to WIFI");
-  display.display();
+  WiFiConnect();
+  MQTTConnect();
 
-  while (WiFi.status() != WL_CONNECTED) { // Wait for the Wi-Fi to connect
-    delay(1000);
-    display.print(".");
-    display.display();
-  }
-  display.clearDisplay();
-  display.setCursor(0,10);
-  display.println("WIFI connection");
-  display.println("established!");
-  display.display();
-  delay(5000);
+  client.setCallback(MQTTCallback);
+
+  MQTTSubscribe("IndoorTemperature");
   
   pinMode(14, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(14), displayControl, RISING); 
@@ -110,39 +114,54 @@ void displayControl(){
 void loop() {
   // put your main code here, to run repeatedly:
   
+  if (WiFi.status() != WL_CONNECTED){
+    WiFiConnect();
+  }
+  if (!client.connected()){
+    MQTTConnect();
+  }
+
+  client.loop();
+  
   display.clearDisplay();
 
   switch(activeMenu){
     case indoorTemp:
-      display.drawLine(0,7,128,7,WHITE);
       display.setTextSize(1);
-      display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.println("Indoor Temperature");
+      display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapHouse, BITMAP_HOUSE_WIDTH, BITMAP_HOUSE_HEIGHT, WHITE);
+      display.setTextSize(2);
+      display.setCursor(35,15);
+      display.print(indoorTemperature, 1);
+      display.print(" C");
+      if (indoorTemperature < 10){
+        display.drawCircle(76,17, 2, WHITE);
+      }
+      else{
+        display.drawCircle(88,17, 2, WHITE);
+      }
     break;
     case outdoorTemp:
-      display.drawLine(0,7,128,7,WHITE);
       display.setTextSize(1);
-      display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.println("Outdoor Temperature");
+      display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapCloud, BITMAP_CLOUD_WIDTH, BITMAP_CLOUD_HEIGHT, WHITE);
     break;
     case power:
-      display.drawLine(0,7,128,7,WHITE);
       display.setTextSize(1);
-      display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.println("Power Usage");
+      display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapLightning, BITMAP_LIGHTNING_WIDTH, BITMAP_LIGHTNING_HEIGHT, WHITE);
     break;
     case indoorHumidity:
-      display.drawLine(0,7,128,7,WHITE);
       display.setTextSize(1);
-      display.setTextColor(WHITE);
       display.setCursor(0,0);
       display.println("Indoor Humidity");
+      display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapRaindrop, BITMAP_RAINDROP_WIDTH, BITMAP_RAINDROP_HEIGHT, WHITE);
     break;
     
