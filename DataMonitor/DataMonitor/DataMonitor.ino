@@ -252,7 +252,7 @@ void loop() {
         StaticJsonBuffer<200> jsonBuffer;
         JsonObject& payload = jsonBuffer.createObject();
         payload["deviceID"] = deviceID;
-        payload["data"] = indoorHumidityValue;
+        payload["data"] = String(indoorHumidityValue);
   
         String payloadBuffer;
         
@@ -268,7 +268,7 @@ void loop() {
         StaticJsonBuffer<200> jsonBuffer;
         JsonObject& payload = jsonBuffer.createObject();
         payload["deviceID"] = deviceID;
-        payload["data"] = indoorTemperatureValue;
+        payload["data"] = String(indoorTemperatureValue);
   
         String payloadBuffer;
         
