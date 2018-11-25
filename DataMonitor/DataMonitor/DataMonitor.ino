@@ -14,6 +14,9 @@ const int   mqttPort = 1883;
 const char* mqttUser = "";
 const char* mqttPassword = "";
 
+DynamicJsonBuffer devicejsonBuffer;
+JsonObject& devices = devicejsonBuffer.createObject();
+
 WiFiClient wifiClient; //Create wifi client object
 PubSubClient client(mqttServer, 1883, wifiClient); //Create a PubSub MQTT Client
 
@@ -86,12 +89,15 @@ char activeMenu = indoorTemp;
 //Data variables
 float indoorTemperatureValue = 0;
 float indoorHumidityValue = 0;
+boolean outdoorSensorActive = false;
 float outdoorTemperatureValue = 0;
+boolean powerSensorActive = false;
 float powerValue = 0;
 
 
 
 void setup() {
+
   // put your setup code here, to run once:
   Serial.begin(115200);
 
@@ -106,8 +112,10 @@ void setup() {
 
   client.setCallback(MQTTCallback);
 
+  MQTTSubscribe("HomeMonitor/Devices/Status");
   MQTTSubscribe("HomeMonitor/OutdoorTemperature");
   MQTTSubscribe("HomeMonitor/Power");
+  
 
   DHTConnect();
   
@@ -169,16 +177,26 @@ void loop() {
       display.println("Outdoor Temperature");
       display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapCloud, BITMAP_CLOUD_WIDTH, BITMAP_CLOUD_HEIGHT, WHITE);
-      display.setTextSize(2);
-      display.setCursor(35,15);
-      display.print(outdoorTemperatureValue, 1);
-      display.print(" C");
-      if (outdoorTemperatureValue < 10){
-        display.drawCircle(76,17, 2, WHITE);
+      if (outdoorSensorActive){
+        display.setTextSize(2);
+        display.setCursor(35,15);
+        display.print(outdoorTemperatureValue, 1);
+        display.print(" C");
+        if (outdoorTemperatureValue < 10){
+          display.drawCircle(76,17, 2, WHITE);
+        }
+        else{
+          display.drawCircle(88,17, 2, WHITE);
+        }    
       }
       else{
-        display.drawCircle(88,17, 2, WHITE);
-      }    
+        display.setTextSize(1);
+        display.setCursor(45,13);
+        display.println("Sensor not");
+        display.setCursor(57,22);
+        display.print("found!");
+      }
+
     break;
     case power:
       display.setTextSize(1);
@@ -186,10 +204,20 @@ void loop() {
       display.println("Power Usage");
       display.drawLine(0,7,128,7,WHITE);
       display.drawBitmap(0, 9, bitmapLightning, BITMAP_LIGHTNING_WIDTH, BITMAP_LIGHTNING_HEIGHT, WHITE);
-      display.setTextSize(2);
-      display.setCursor(35,15);
-      display.print(powerValue, 0);
-      display.print("W");
+      if (powerSensorActive){
+        display.setTextSize(2);
+        display.setCursor(35,15);
+        display.print(powerValue, 0);
+        display.print("W");
+      }
+      else{
+        display.setTextSize(1);
+        display.setCursor(45,13);
+        display.println("Sensor not");
+        display.setCursor(57,22);
+        display.print("found!");
+      }
+
     break;
     case indoorHumidity:
       display.setTextSize(1);
@@ -209,39 +237,46 @@ void loop() {
 
   if ((millis() - lastRuntime) > 5000){
     lastRuntime = millis();
+
     float h = dht.readHumidity();
     // Read temperature as Celsius (the default)
     float t = dht.readTemperature();
-
-    if (abs(indoorHumidityValue - h) > 0.1){
-      indoorHumidityValue = h;
-      
-      StaticJsonBuffer<200> jsonBuffer;
-      JsonObject& payload = jsonBuffer.createObject();
-      payload["deviceID"] = deviceID;
-      payload["data"] = indoorHumidityValue;
-
-      String payloadBuffer;
-      
-      payload.printTo(payloadBuffer);
-  
-      client.publish("HomeMonitor/IndoorHumidity", payloadBuffer.c_str(), true);
-      
+    
+    if(isnan(h) || isnan(t)){
+      Serial.println("DHT Sensor is messing up!");
     }
-    if (abs(indoorTemperatureValue - t) > 0.1){
-      indoorTemperatureValue = t;
-
-      StaticJsonBuffer<200> jsonBuffer;
-      JsonObject& payload = jsonBuffer.createObject();
-      payload["deviceID"] = deviceID;
-      payload["data"] = indoorTemperatureValue;
-
-      String payloadBuffer;
-      
-      payload.printTo(payloadBuffer);
+    else{
+      if (abs(indoorHumidityValue - h) > 0.1){
+        indoorHumidityValue = h;
+        
+        StaticJsonBuffer<200> jsonBuffer;
+        JsonObject& payload = jsonBuffer.createObject();
+        payload["deviceID"] = deviceID;
+        payload["data"] = indoorHumidityValue;
   
-      client.publish("HomeMonitor/IndoorTemperature", payloadBuffer.c_str(), true);
+        String payloadBuffer;
+        
+        payload.printTo(payloadBuffer);
+    
+        client.publish("HomeMonitor/IndoorHumidity", payloadBuffer.c_str(), true);
+        
+      }
       
-    } 
+      if (abs(indoorTemperatureValue - t) > 0.1){
+        indoorTemperatureValue = t;
+  
+        StaticJsonBuffer<200> jsonBuffer;
+        JsonObject& payload = jsonBuffer.createObject();
+        payload["deviceID"] = deviceID;
+        payload["data"] = indoorTemperatureValue;
+  
+        String payloadBuffer;
+        
+        payload.printTo(payloadBuffer);
+    
+        client.publish("HomeMonitor/IndoorTemperature", payloadBuffer.c_str(), true);
+        
+      } 
+    }
   }  
 }
