@@ -182,7 +182,7 @@ void loop() {
         display.setCursor(35,15);
         display.print(outdoorTemperatureValue, 1);
         display.print(" C");
-        if (outdoorTemperatureValue < 10){
+        if (outdoorTemperatureValue < 10 && outdoorTemperatureValue > 0){
           display.drawCircle(76,17, 2, WHITE);
         }
         else{
