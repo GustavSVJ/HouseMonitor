@@ -1,8 +1,8 @@
 #include <ESP8266WiFi.h>
 /*const char* ssid     = "VintherNet";         // The SSID (name) of the Wi-Fi network you want to connect to
 const char* password = "Briobane";     // The password of the Wi-Fi network*/
-const char* ssid     = "lsj-hha";         // The SSID (name) of the Wi-Fi network you want to connect to
-const char* password = "Putteprut";     // The password of the Wi-Fi network
+const char* ssid     = "VintherNet";         // The SSID (name) of the Wi-Fi network you want to connect to
+const char* password = "Briobane";     // The password of the Wi-Fi network
 
 //MQTT Libraries
 #include <PubSubClient.h>
@@ -68,7 +68,9 @@ const byte interruptPin = 4;
 volatile byte state = LOW;
 unsigned long lastBlinkTime = 0;
 unsigned static int compareTime = 100;
-int blinkCounter = 0;
+int newBlinkFlag = 0;
+float power = 0;
+float powerAvg = 0;
 
 void setup() {
   pinMode(ledPin, OUTPUT); //debug LED
@@ -99,20 +101,41 @@ void loop() {
 
   client.loop();
 
-  if (timerFlag == 1){
+
+  if (newBlinkFlag == 1){
+    newBlinkFlag = 0;
+
+    if (powerAvg == 0){
+      powerAvg = power;
+    }
+    else{
+      powerAvg += power;
+      powerAvg /= 2;
+    }
+
+    
+  }
+  
+  if (timerFlag == 1 && powerAvg != 0){
     timerFlag = 0;
     StaticJsonBuffer<200> jsonBuffer;
     JsonObject& payload = jsonBuffer.createObject();
     payload["deviceID"] = deviceID;
-    payload["data"] = String(blinkCounter);
+    payload["data"] = String(powerAvg);
+    powerAvg = 0;
   
     String payloadBuffer;
         
     payload.printTo(payloadBuffer);
     
     client.publish("HomeMonitor/Power", payloadBuffer.c_str(), true);
-    blinkCounter = 0;
   }
+  else if(timerFlag == 1){
+    timerFlag = 0;
+  }
+
+  
+  
 
 
   digitalWrite(ledPin, state);
@@ -120,10 +143,13 @@ void loop() {
 
 void blink() {
   if (millis() > lastBlinkTime + compareTime) {
+    
+    float t = (millis() - lastBlinkTime) / 1000;
     lastBlinkTime = millis();
-    blinkCounter++;
-    state = !state;
-    Serial.println("Blink");
+    power = 3600 / t;
+    Serial.println("blink");
+    newBlinkFlag = 1;
+
   }
 }
 
