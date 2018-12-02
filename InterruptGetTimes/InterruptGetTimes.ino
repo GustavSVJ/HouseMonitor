@@ -69,8 +69,8 @@ volatile byte state = LOW;
 unsigned long lastBlinkTime = 0;
 unsigned static int compareTime = 100;
 int newBlinkFlag = 0;
-float power = 0;
-float powerAvg = 0;
+double power = 0;
+double powerAvg = 0;
 
 void setup() {
   pinMode(ledPin, OUTPUT); //debug LED
@@ -112,6 +112,8 @@ void loop() {
       powerAvg += power;
       powerAvg /= 2;
     }
+    Serial.print("PowerAvg: ");
+    Serial.println(powerAvg);
 
     
   }
@@ -128,7 +130,7 @@ void loop() {
         
     payload.printTo(payloadBuffer);
     
-    client.publish("HomeMonitor/Power", payloadBuffer.c_str(), true);
+    client.publish("HomeMonitor/Power", payloadBuffer.c_str(), false);
   }
   else if(timerFlag == 1){
     timerFlag = 0;
@@ -144,10 +146,11 @@ void loop() {
 void blink() {
   if (millis() > lastBlinkTime + compareTime) {
     
-    float t = (millis() - lastBlinkTime) / 1000;
+    double t = (millis() - lastBlinkTime) / 1000.0;
     lastBlinkTime = millis();
     power = 3600 / t;
-    Serial.println("blink");
+    Serial.print("Power: ");
+    Serial.println(power);
     newBlinkFlag = 1;
 
   }
