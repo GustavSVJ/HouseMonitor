@@ -1,8 +1,7 @@
  #include <ESP8266WiFi.h>
-/*const char* ssid     = "VintherNet";         // The SSID (name) of the Wi-Fi network you want to connect to
-const char* password = "Briobane";     // The password of the Wi-Fi network*/
-const char* ssid     = "lsj-hha";         // The SSID (name) of the Wi-Fi network you want to connect to
-const char* password = "Putteprut";     // The password of the Wi-Fi network
+const char* ssid     = "VintherNet";         // The SSID (name) of the Wi-Fi network you want to connect to
+const char* password = "Briobane";     // The password of the Wi-Fi network
+
 
 
 //MQTT Libraries
